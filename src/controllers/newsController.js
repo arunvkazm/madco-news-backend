@@ -1,5 +1,7 @@
 import News from '../models/News.js';
 import Category from '../models/Category.js';
+import axios from 'axios';
+
 
 /**
  * ➕ ADD SHORT NEWS
@@ -126,38 +128,126 @@ export async function getNewsById(req, res, next) {
  * 📂 GET ALL NEWS BY CATEGORY ID (with pagination)
  * Query: ?page=1&limit=10
  */
+/**
+ * 📂 GET ALL NEWS BY CATEGORY ID (local + third-party)
+ */
 export async function getNewsByCategory(req, res, next) {
   try {
     const { categoryId } = req.params;
     const { page = 1, limit = 10 } = req.query;
 
-    if (!categoryId)
-      return res.status(400).json({ message: 'Category ID required' });
+    console.log("📩 Incoming Request:");
+    console.log("➡️ Category ID:", categoryId);
+    console.log("➡️ Page:", page, "Limit:", limit);
+
+    if (!categoryId) {
+      return res.status(400).json({ message: "Category ID required" });
+    }
+
+    // 1️⃣ Get category name from DB
+    const category = await Category.findById(categoryId);
+    if (!category) {
+      console.log("❌ Category not found for ID:", categoryId);
+      return res.status(404).json({ message: "Category not found" });
+    }
+
+    console.log("✅ Category Found:", category.name);
 
     const skip = (Number(page) - 1) * Number(limit);
 
-    const filter = { category: categoryId, status: 'published' };
+    // 2️⃣ Fetch local DB news
+    const filter = { category: categoryId, status: "published" };
     const total = await News.countDocuments(filter);
 
-    const newsList = await News.find(filter)
-      .populate('category', 'name')
+    const localNews = await News.find(filter)
+      .populate("category", "name")
       .sort({ publishedAt: -1 })
       .skip(skip)
       .limit(Number(limit));
 
-    if (!newsList.length)
-      return res.status(404).json({ message: 'No news found for this category' });
+    console.log(`🗞️ Local News Found: ${localNews.length}/${limit}`);
+
+    let externalNews = [];
+
+    // 3️⃣ Map your custom categories to valid NewsAPI categories
+    const categoryMap = {
+      Trending: "general",
+      Business: "business",
+      Entertainment: "entertainment",
+      Health: "health",
+      Science: "science",
+      Sports: "sports",
+      Technology: "technology",
+    };
+
+    const mappedCategory =
+      categoryMap[category.name] || "general"; // default fallback
+
+    console.log(
+      `🌍 Category Mapping → "${category.name}" → "${mappedCategory}"`
+    );
+
+    // 4️⃣ Fetch from NewsAPI if not enough local news
+    if (localNews.length < limit) {
+      const remaining = limit - localNews.length;
+      const NEWS_API_KEY = process.env.NEWS_API_KEY;
+
+      const newsApiUrl = `https://newsapi.org/v2/top-headlines?category=${mappedCategory}&language=en&pageSize=${remaining}&apiKey=${NEWS_API_KEY}`;
+
+      console.log("🌐 Fetching from NewsAPI:", newsApiUrl);
+
+      try {
+        const { data } = await axios.get(newsApiUrl);
+
+        if (data.articles && data.articles.length > 0) {
+          console.log(`✅ External News Found: ${data.articles.length}`);
+          externalNews = data.articles.map((a) => ({
+            title: a.title,
+            summary: a.description || "",
+            imageUrl: a.urlToImage,
+            sourceName: a.source?.name || "Unknown",
+            sourceUrl: a.url,
+            publishedAt: a.publishedAt,
+            category: { _id: categoryId, name: category.name },
+            isTrending: false,
+            status: "published",
+            isExternal: true,
+          }));
+        } else {
+          console.log("⚠️ No articles returned from NewsAPI");
+        }
+      } catch (err) {
+        console.error("🚨 NewsAPI fetch error:", err.message);
+      }
+    } else {
+      console.log("✅ Enough local news, skipping NewsAPI call");
+    }
+
+    // 5️⃣ Merge both sources
+    const combinedNews = [...localNews, ...externalNews];
+
+    console.log(
+      `📦 Combined News Count: ${combinedNews.length} (Local: ${localNews.length}, External: ${externalNews.length})`
+    );
+
+    if (!combinedNews.length) {
+      console.log("❌ No news found for this category");
+      return res
+        .status(404)
+        .json({ message: "No news found for this category" });
+    }
 
     res.json({
-      message: 'News fetched successfully by category',
+      message: "News fetched successfully by category",
       categoryId,
+      categoryName: category.name,
       currentPage: Number(page),
-      totalPages: Math.ceil(total / Number(limit)),
-      totalItems: total,
-      count: newsList.length,
-      news: newsList,
+      totalItems: total + externalNews.length,
+      count: combinedNews.length,
+      news: combinedNews,
     });
   } catch (err) {
+    console.error("❌ getNewsByCategory error:", err.message);
     next(err);
   }
 }

@@ -12,15 +12,14 @@ import { auth } from "../middlewares/auth.js";
 
 const router = express.Router();
 
-router.use(adminMiddleware);
+// 🚨 Must come BEFORE any route with :id
+router.get("/category/:categoryId", auth, getNewsByCategory);
 
+// Admin routes
 router.post("/", adminMiddleware, addNews);
 router.get("/", adminMiddleware, getAllNews);
 router.get("/:id", adminMiddleware, getNewsById);
 router.put("/:id", adminMiddleware, updateNews);
 router.delete("/:id", adminMiddleware, deleteNews);
-
-// 🆕 Get all news by category
-router.get("/category/:categoryId", auth, getNewsByCategory);
 
 export default router;

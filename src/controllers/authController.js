@@ -24,9 +24,10 @@ export async function register(req, res, next) {
 
     const existing = await User.findOne({ email });
     if (existing)
-      return res
-        .status(409)
-        .json({ message: "Email already in use", key: "EMAIL_EXISTS" });
+      return res.status(409).json({
+        message: "Email already in use",
+        key: "EMAIL_EXISTS",
+      });
 
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -36,7 +37,7 @@ export async function register(req, res, next) {
       password,
       otp: {
         code: otpCode,
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 min validity
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
         purpose: "verifyEmail",
       },
       isVerified: false,
@@ -44,11 +45,12 @@ export async function register(req, res, next) {
 
     await user.save();
 
-    await sendEmail(
+    // ✅ Async email (no await)
+    sendEmail(
       email,
       "Verify your Madco News account",
       `Your OTP is ${otpCode}`
-    );
+    ).catch(err => console.error("Email send error:", err));
 
     return res.status(201).json({
       message: "OTP sent to your email for verification",
@@ -59,6 +61,7 @@ export async function register(req, res, next) {
     next(err);
   }
 }
+
 
 /**
  * VERIFY OTP (For registration & forgot password)

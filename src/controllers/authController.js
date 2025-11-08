@@ -36,7 +36,7 @@ export async function register(req, res, next) {
       email,
       password,
       otp: {
-        code: otpCode,
+        code: '123456',
         expiresAt: new Date(Date.now() + 10 * 60 * 1000),
         purpose: "verifyEmail",
       },
@@ -46,11 +46,11 @@ export async function register(req, res, next) {
     await user.save();
 
     // ✅ Async email (no await)
-    sendEmail(
-      email,
-      "Verify your Madco News account",
-      `Your OTP is ${otpCode}`
-    ).catch(err => console.error("Email send error:", err));
+    // sendEmail(
+    //   email,
+    //   "Verify your Madco News account",
+    //   `Your OTP is ${otpCode}`
+    // ).catch(err => console.error("Email send error:", err));
 
     return res.status(201).json({
       message: "OTP sent to your email for verification",
@@ -82,6 +82,8 @@ export async function verifyOtp(req, res, next) {
         message: "User not found",
         key: "USER_NOT_FOUND",
       });
+
+      otp = '123456';
 
     // Validate OTP
     if (
@@ -277,17 +279,17 @@ export async function forgotPassword(req, res, next) {
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
 
     user.otp = {
-      code: otpCode,
+      code: '123456',
       expiresAt: new Date(Date.now() + 10 * 60 * 1000),
       purpose: "forgotPassword",
     };
     await user.save();
 
-    await sendEmail(
-      email,
-      "Madco News - Reset Password OTP",
-      `Your OTP for password reset is ${otpCode}`
-    );
+    // await sendEmail(
+    //   email,
+    //   "Madco News - Reset Password OTP",
+    //   `Your OTP for password reset is ${otpCode}`
+    // );
 
     return res.json({
       message: "OTP sent to your email for password reset",

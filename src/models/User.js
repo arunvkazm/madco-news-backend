@@ -19,32 +19,26 @@ const OTPSchema = new Schema({
 
 const UserSchema = new Schema(
   {
-    name: { type: String },
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      index: true,
-    },
+    name: String,
+    email: { type: String, required: true, unique: true, lowercase: true, index: true },
     password: { type: String, required: true },
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
 
-    // Email verification flag
     isVerified: { type: Boolean, default: false },
-
-    // Refresh tokens (for multi-device login)
-    refreshTokens: [RefreshTokenSchema],
-
-    // ✅ New fields for OTP-based flow
     otp: OTPSchema,
-    otpVerified: { type: Boolean, default: false }, // useful for registration verification
+    otpVerified: { type: Boolean, default: false },
 
-    // ✅ New: Password reset timestamp
+    preferredCategories: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "Category" }
+    ],
+    isCategoriesSelected: { type: Boolean, default: false },
+
     passwordChangedAt: { type: Date },
+    refreshTokens: [RefreshTokenSchema],
   },
   { timestamps: true }
 );
+
 
 // Pre-save hook to hash password
 UserSchema.pre('save', async function (next) {

@@ -16,7 +16,7 @@ const router = express.Router();
 // router.use(adminMiddleware);
 
 // CRUD routes
-router.post('/',adminMiddleware, addCategory);              // Add category
+router.post('/add',adminMiddleware, addCategory);              // Add category
 router.get('/',auth, getAllCategories);          // List categories
 router.put('/:id',adminMiddleware, updateCategory);         // Update category
 router.delete('/:id',adminMiddleware, deleteCategory); 

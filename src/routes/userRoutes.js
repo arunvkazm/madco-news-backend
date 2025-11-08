@@ -1,7 +1,8 @@
 import express from 'express';
 import {
   selectCategories,
-  getMyProfile
+  getMyProfile,
+  updateProfile
 } from '../controllers/userController.js';
 
 import {auth} from '../middlewares/auth.js';
@@ -12,6 +13,8 @@ router.use(auth);
 
 // CRUD routes
 router.post('/select-categories', selectCategories);
-router.post('/me',getMyProfile)    
+router.get('/me',getMyProfile)  
+router.put("/update-profile", updateProfile);
+
 
 export default router;

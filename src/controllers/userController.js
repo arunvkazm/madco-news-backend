@@ -67,4 +67,53 @@ export async function getMyProfile(req, res) {
   }
 }
 
+export async function updateProfile(req, res, next) {
+  try {
+    const { name, email } = req.body;
+
+    if (!name)
+      return res.status(400).json({
+        message: "Name required",
+        key: "NAME_REQUIRED"
+      });
+
+    const user = await User.findById(req.user.id);
+
+    if (!user)
+      return res.status(404).json({
+        message: "User not found",
+        key: "USER_NOT_FOUND"
+      });
+
+    // ✅ Update allowed fields
+    user.name = name || user.name;
+    
+    // ❗ Only allow email change if needed — or skip this for now
+    if (email && email !== user.email) {
+      return res.status(400).json({
+        message: "Email update not allowed from here",
+        key: "EMAIL_UPDATE_NOT_ALLOWED"
+      });
+    }
+
+    await user.save();
+
+    return res.json({
+      message: "Profile updated successfully",
+      key: "PROFILE_UPDATED",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        selectedCategories: user.selectedCategories
+      }
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
+
 

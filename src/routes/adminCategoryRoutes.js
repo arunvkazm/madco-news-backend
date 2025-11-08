@@ -16,10 +16,10 @@ const router = express.Router();
 // router.use(adminMiddleware);
 
 // CRUD routes
-router.post('/add',adminMiddleware, addCategory);              // Add category
-router.get('/',auth, getAllCategories);          // List categories
-router.put('/:id',adminMiddleware, updateCategory);         // Update category
-router.delete('/:id',adminMiddleware, deleteCategory); 
-router.post('/bulk',adminMiddleware,bulkCategoryAdd) ;    // Delete category
+router.post('/admin/categories/add',adminMiddleware, addCategory);              // Add category
+router.get('/categories',auth, getAllCategories);          // List categories
+router.put('/admin/categories/:id',adminMiddleware, updateCategory);         // Update category
+router.delete('/admin/categories/:id',adminMiddleware, deleteCategory); 
+router.post('/admin/categories/bulk',adminMiddleware,bulkCategoryAdd) ;    // Delete category
 
 export default router;

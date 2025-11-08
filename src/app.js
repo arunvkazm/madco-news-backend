@@ -26,7 +26,7 @@ app.use(rateLimit({ windowMs: 60 * 1000, max: 100 }));
 // Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/admin', adminUserRoutes);
-app.use('/api/v1/admin/categories', adminCategoryRoutes);
+app.use('/api/v1', adminCategoryRoutes);
 app.use('/api/v1/news', newsRoutes);
 app.use('/api/v1/user', userRoutes);
 

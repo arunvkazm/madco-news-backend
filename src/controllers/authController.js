@@ -83,8 +83,6 @@ export async function verifyOtp(req, res, next) {
         key: "USER_NOT_FOUND",
       });
 
-      otp = '123456';
-
     // Validate OTP
     if (
       !user.otp ||

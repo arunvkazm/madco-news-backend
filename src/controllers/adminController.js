@@ -111,3 +111,13 @@ export async function deleteCategory(req, res, next) {
     next(err);
   }
 }
+
+export async function bulkCategoryAdd(req, res,next) {
+  try {
+    const categories = req.body.categories;
+    const saved = await Category.insertMany(categories);
+    res.status(201).json({ success: true, data: saved });
+  } catch (err) {
+   next(err);
+  }
+}

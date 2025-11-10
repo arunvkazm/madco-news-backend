@@ -10,6 +10,9 @@ import adminUserRoutes from './routes/adminUserRoutes.js';
 import adminCategoryRoutes from './routes/adminCategoryRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import newsRoutes from './routes/newsRoutes.js';
+import adminMilestoneRoutes from "./routes/adminMilestoneRoutes.js";
+import userStatsRoutes from "./routes/userStatsRoutes.js";
+
 
 
 const app = express();
@@ -29,6 +32,10 @@ app.use('/api/v1/admin', adminUserRoutes);
 app.use('/api/v1', adminCategoryRoutes);
 app.use('/api/v1/news', newsRoutes);
 app.use('/api/v1/user', userRoutes);
+app.use("/api/v1/admin/milestones", adminMilestoneRoutes);
+app.use("/api/v1/user/stats", userStatsRoutes);
+
+
 
 // Error Handler
 // app.use(errorHandler);

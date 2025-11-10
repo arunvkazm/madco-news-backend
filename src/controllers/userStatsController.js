@@ -5,7 +5,9 @@ export async function recordNewsRead(req, res) {
   try {
     const { newsId, timeSpent } = req.body; // timeSpent in seconds
 
-    const user = await User.findById(req.user.id).populate("stats.currentMilestone");
+    const user = await User.findById(req.user.id).populate(
+      "stats.currentMilestone"
+    );
     if (!user) return res.status(404).json({ message: "User not found" });
 
     // ✅ Update stats
@@ -30,7 +32,7 @@ export async function recordNewsRead(req, res) {
 
     // ✅ If milestone reached, move to next
     if (progress >= 100) {
-      const next = milestones.find(m => m.order > current.order);
+      const next = milestones.find((m) => m.order > current.order);
       if (next) {
         user.stats.currentMilestone = next._id;
         user.stats.milestoneProgress = 0;
@@ -42,7 +44,7 @@ export async function recordNewsRead(req, res) {
     return res.json({
       message: "Read event recorded",
       totalReadNews: user.stats.totalReadNews,
-      milestoneProgress: user.stats.milestoneProgress
+      milestoneProgress: user.stats.milestoneProgress,
     });
   } catch (err) {
     console.error(err);
@@ -50,27 +52,46 @@ export async function recordNewsRead(req, res) {
   }
 }
 
+
 export async function getUserStats(req, res) {
   try {
     const user = await User.findById(req.user.id)
-      .select("stats name email")
-      .populate("stats.currentMilestone");
+      .select("-password -refreshTokens")
+      .populate("stats.currentMilestone", "name targetReads rewardText order");
 
-    const milestones = await Milestone.find().sort({ order: 1 });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-    const current = user.stats.currentMilestone;
-    const next = milestones.find(m => m.order > current?.order);
+    const currentMilestone = user.stats.currentMilestone;
+
+    // ✅ find next milestone only if current milestone exists
+    let nextMilestone = null;
+    if (currentMilestone) {
+      nextMilestone = await Milestone.findOne({
+        order: currentMilestone.order + 1
+      }).select("name targetReads rewardText order");
+    } else {
+      // If user has no milestone assigned yet
+      nextMilestone = await Milestone.findOne({ order: 1 }).select(
+        "name targetReads rewardText order"
+      );
+    }
 
     return res.json({
       message: "User stats fetched",
-      name: user.name,
-      email: user.email,
-      stats: user.stats,
-      currentMilestone: current,
-      nextMilestone: next || null
+      user: {
+        name: user.name,
+        email: user.email,
+      },
+      stats: {
+        ...user.stats.toObject(),
+        nextMilestone,
+      }
     });
+
   } catch (err) {
-    console.log(err);
+    console.error("Stats error =>", err);
     res.status(500).json({ message: "Server error" });
   }
 }

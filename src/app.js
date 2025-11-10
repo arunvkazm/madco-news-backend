@@ -12,8 +12,9 @@ import userRoutes from './routes/userRoutes.js';
 import newsRoutes from './routes/newsRoutes.js';
 import adminMilestoneRoutes from "./routes/adminMilestoneRoutes.js";
 import userStatsRoutes from "./routes/userStatsRoutes.js";
-
-
+import adminAnalyticsRoutes from "./routes/adminAnalyticsRoutes.js";
+import bookmarkRoutes from "./routes/bookmarkRoutes.js";
+import searchRoutes from "./routes/searchRoutes.js";
 
 const app = express();
 connectDB();
@@ -34,6 +35,9 @@ app.use('/api/v1/news', newsRoutes);
 app.use('/api/v1/user', userRoutes);
 app.use("/api/v1/admin/milestones", adminMilestoneRoutes);
 app.use("/api/v1/user/stats", userStatsRoutes);
+app.use("/api/v1/admin/analytics", adminAnalyticsRoutes);
+app.use("/api/v1/user/bookmarks", bookmarkRoutes);
+app.use('/api/v1/search', searchRoutes);
 
 
 

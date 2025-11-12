@@ -15,6 +15,7 @@ import userStatsRoutes from "./routes/userStatsRoutes.js";
 import adminAnalyticsRoutes from "./routes/adminAnalyticsRoutes.js";
 import bookmarkRoutes from "./routes/bookmarkRoutes.js";
 import searchRoutes from "./routes/searchRoutes.js";
+import cronRoutes from "./routes/cronRoutes.js";
 
 const app = express();
 connectDB();
@@ -28,6 +29,7 @@ app.use(compression());
 app.use(rateLimit({ windowMs: 60 * 1000, max: 100 }));
 
 // Routes
+app.use('/api/v1/admin/cron', cronRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/admin', adminUserRoutes);
 app.use('/api/v1', adminCategoryRoutes);
@@ -38,7 +40,6 @@ app.use("/api/v1/user/stats", userStatsRoutes);
 app.use("/api/v1/admin/analytics", adminAnalyticsRoutes);
 app.use("/api/v1/user/bookmarks", bookmarkRoutes);
 app.use('/api/v1/search', searchRoutes);
-
 
 
 // Error Handler

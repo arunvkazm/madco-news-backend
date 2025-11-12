@@ -5,6 +5,11 @@ import axios from "axios";
 
 export async function fetchLatestNews(req, res) {
   try {
+
+    const { key } = req.query;
+    if (key !== process.env.CRON_SECRET_KEY)
+      return res.status(401).json({ message: "Unauthorized" });
+
     const NEWS_API_KEY = process.env.NEWS_API_KEY;
     const categories = await Category.find();
 

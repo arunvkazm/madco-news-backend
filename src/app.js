@@ -41,8 +41,6 @@ app.use("/api/v1/admin/analytics", adminAnalyticsRoutes);
 app.use("/api/v1/user/bookmarks", bookmarkRoutes);
 app.use('/api/v1/search', searchRoutes);
 
-
-// Error Handler
 // app.use(errorHandler);
 
 export default app;

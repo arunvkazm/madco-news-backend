@@ -1,0 +1,7 @@
+# No external dependencies required!
+# This script uses only standard Python 3.7+ libraries:
+# - json (standard library)
+# - sys (standard library)
+# - re (standard library)
+# - collections (standard library)
+

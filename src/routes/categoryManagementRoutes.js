@@ -5,7 +5,7 @@ import {
   updateCategory,
   deleteCategory,
   bulkCategoryAdd
-} from '../controllers/adminController.js';
+} from '../controllers/categoryManagementController.js';
 
 import { adminMiddleware } from '../middlewares/adminMiddleware.js';
 import {auth} from '../middlewares/auth.js';

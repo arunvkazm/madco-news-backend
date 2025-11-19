@@ -48,7 +48,21 @@ const UserSchema = new Schema(
     },
     password: { type: String, required: true },
 
-    role: { type: String, enum: ["user", "admin"], default: "user" },
+    // NEW FIELDS
+    phoneNumber: { type: String, trim: true, default: null },
+    country: { type: String, trim: true, default: null },
+
+    userStatus: {
+      type: String,
+      enum: ["active", "inactive", "suspended", "banned"],
+      default: "active",
+    },
+
+    role: {
+      type: String,
+      enum: ["user", "editor", "sub_admin", "super_admin"],
+      default: "user",
+    },
 
     // Verification
     isVerified: { type: Boolean, default: false },
@@ -61,7 +75,6 @@ const UserSchema = new Schema(
     ],
     isCategoriesSelected: { type: Boolean, default: false },
 
-    // Stats (with proper defaults)
     stats: {
       type: UserStatsSchema,
       default: () => ({
@@ -73,12 +86,26 @@ const UserSchema = new Schema(
         milestoneProgress: 0,
       }),
     },
+
     bookmarksCount: { type: Number, default: 0 },
     passwordChangedAt: Date,
     refreshTokens: [RefreshTokenSchema],
+
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    allowedCategories: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
+    ],
+
+    isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
+
 
 /* ---------------------- Password Hashing ---------------------- */
 UserSchema.pre("save", async function (next) {

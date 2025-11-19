@@ -1,13 +1,16 @@
 import express from 'express';
-import { getAllUsers, toggleUserStatus, deleteUser } from '../controllers/adminController.js';
+import {createAdminUser,getAllAdminUsers,updateAdminUser,deleteAdminUser} from '../controllers/adminUserController.js';
 import { adminMiddleware } from '../middlewares/adminMiddleware.js';
-
+import {requireRole} from '../middlewares/requireRole.js';
 const router = express.Router();
 
-router.use(adminMiddleware); // Protect all routes
+// Protect all routes for admins
+ router.use(adminMiddleware,requireRole("super_admin", "sub_admin")); 
 
-router.get('/users', getAllUsers);
-router.put('/users/:id/toggle', toggleUserStatus);
-router.delete('/users/:id', deleteUser);
+router.get('/get-all', getAllAdminUsers);
+router.post('/create-user', createAdminUser);
+router.put('/update-user/:id', updateAdminUser);
+router.delete('/delete-user/:id', deleteAdminUser);
 
 export default router;
+

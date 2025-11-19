@@ -3,9 +3,15 @@ import mongoose from "mongoose";
 const MilestoneSchema = new mongoose.Schema({
   name: String,
   description: String,
-  targetReads: Number, // e.g., 40 articles
-  rewardText: String, // e.g., "Level 1 Reader"
-  order: Number, // milestone order
+
+  // TIME-BASED milestone (in seconds)
+  targetSeconds: {
+    type: Number,
+    required: true,
+  },
+
+  rewardText: String,
+  order: Number,
 }, { timestamps: true });
 
 export default mongoose.model("Milestone", MilestoneSchema);

@@ -8,6 +8,7 @@ import {
 } from "../utils/tokens.js";
 
 const ACCESS_TOKEN_EXPIRES_IN = process.env.ACCESS_TOKEN_EXPIRES_IN || "15m";
+ const allowedRoles = ["super_admin", "sub_admin", "editor"];
 
 /**
  * REGISTER USER + SEND OTP
@@ -227,8 +228,11 @@ export async function adminLogin(req, res, next) {
     const ok = await user.comparePassword(password);
     if (!ok) return res.status(401).json({ message: "Invalid credentials" });
 
-    if (user.role !== "admin")
-      return res.status(403).json({ message: "Admin access required" });
+   
+
+if (!allowedRoles.includes(user.role)) {
+  return res.status(403).json({ message: "Admin access required" });
+}
 
     const accessToken = generateAccessToken({ sub: user._id, role: user.role });
     const refreshToken = generateRefreshToken({
@@ -390,7 +394,7 @@ export async function refreshToken(req, res, next) {
  */
 export async function logout(req, res, next) {
   try {
-    const { refreshToken } = req.body;
+   const refreshToken = req.body?.refreshToken;
     if (!refreshToken)
       return res.status(400).json({ message: "Refresh token required" });
 

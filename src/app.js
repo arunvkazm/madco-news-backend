@@ -7,12 +7,15 @@ import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import { connectDB } from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
+import userManagementRoutes from './routes/userManagementRoutes.js';
+import categoryManagementRoutes from './routes/categoryManagementRoutes.js';
 import adminUserRoutes from './routes/adminUserRoutes.js';
-import adminCategoryRoutes from './routes/adminCategoryRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import newsRoutes from './routes/newsRoutes.js';
 import adminMilestoneRoutes from "./routes/adminMilestoneRoutes.js";
 import userStatsRoutes from "./routes/userStatsRoutes.js";
+import cronRoutes from "./routes/cronRoutes.js";
+
 
 const app = express();
 connectDB();
@@ -53,12 +56,15 @@ app.use(rateLimit({ windowMs: 60 * 1000, max: 100 }));
 
 // Routes
 app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/admin', adminUserRoutes);
-app.use('/api/v1', adminCategoryRoutes);
+app.use('/api/v1/admin/userManagement', userManagementRoutes);
+app.use('/api/v1', categoryManagementRoutes);
 app.use('/api/v1/news', newsRoutes);
 app.use('/api/v1/user', userRoutes);
 app.use("/api/v1/admin/milestones", adminMilestoneRoutes);
 app.use("/api/v1/user/stats", userStatsRoutes);
+app.use("/api/v1/cron",cronRoutes);
+app.use('/api/v1/admin',adminUserRoutes);
+
 
 
 

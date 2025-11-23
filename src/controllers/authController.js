@@ -471,10 +471,13 @@ export async function logout(req, res, next) {
     res.clearCookie('refresh_token');
 
     return res.status(200).json({ message: "Logged out successfully" });
-  } catch (err) {
+  }
+ }
+  catch (err) {
     next(err);
   }
 }
+
 
 /**
  * VERIFY AUTHENTICATION (Check if user is authenticated)

@@ -1,6 +1,8 @@
 import News from '../models/News.js';
 import Category from '../models/Category.js';
 import axios from 'axios';
+import { uploadToCloudinary } from '../utils/uploadToCloudinary.js';
+
 
 
 /**
@@ -8,11 +10,20 @@ import axios from 'axios';
  */
 export async function addNews(req, res, next) {
   try {
-    const { title, summary, imageUrl, category, sourceName, sourceUrl, isTrending, status } =
+    const { title, summary, category, sourceName, sourceUrl, isTrending, status } =
       req.body;
 
-    if (!title || !summary || !imageUrl || !category)
+    if (!title || !summary  || !category)
       return res.status(400).json({ message: 'Title, summary, imageUrl, and category required.' });
+
+    if (!req.file)
+      return res.status(400).json({ message: 'Image file is required.' });
+
+    // Upload to Cloudinary
+    const uploadResult = await uploadToCloudinary(req.file.path, { folder: 'yourdoc/news' });
+    const imageUrl = uploadResult.url;
+    const publicId = uploadResult.public_id;
+
 
     const categoryExists = await Category.findById(category);
     if (!categoryExists) return res.status(404).json({ message: 'Category not found.' });

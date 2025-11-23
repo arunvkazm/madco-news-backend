@@ -1,48 +1,6 @@
 import User from '../models/User.js';
 import Category from '../models/Category.js';
 
-// Get all users (paginated)
-export async function getAllUsers(req, res, next) {
-  try {
-    const users = await User.find({ role: 'user' }).select('-password -refreshTokens');
-    return res.json({ message: 'Users fetched successfully', users });
-  } catch (err) {
-    next(err);
-  }
-}
-
-// Block / Unblock user
-export async function toggleUserStatus(req, res, next) {
-  try {
-    const { id } = req.params;
-    const user = await User.findById(id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    user.isVerified = !user.isVerified; // Example: block by marking unverified
-    await user.save();
-
-    return res.json({
-      message: `User ${user.isVerified ? 'unblocked' : 'blocked'} successfully`,
-      user: { id: user._id, email: user.email, isVerified: user.isVerified },
-    });
-  } catch (err) {
-    next(err);
-  }
-}
-
-// Delete user (optional)
-export async function deleteUser(req, res, next) {
-  try {
-    const { id } = req.params;
-    const user = await User.findByIdAndDelete(id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    return res.json({ message: 'User deleted successfully', userId: id });
-  } catch (err) {
-    next(err);
-  }
-}
-
 /**
  * Add a new category
  */

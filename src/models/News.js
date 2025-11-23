@@ -39,6 +39,11 @@ const NewsSchema = new mongoose.Schema(
       enum: ['draft', 'published'],
       default: 'draft',
     },
+    summaryStatus: {
+  type: String,
+  enum: ['pending', 'processing', 'completed'],
+  default: 'pending',
+},
     publishedAt: {
       type: Date,
       default: Date.now,

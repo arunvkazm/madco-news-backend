@@ -13,12 +13,12 @@ mongoose
     process.exit(1);
   });
 
-// Function to create admin
-async function createAdmin({ name, email, password }) {
+// Function to create super admin
+async function createSuperAdmin({ name, email, password, phoneNumber, country }) {
   try {
     const existing = await User.findOne({ email });
     if (existing) {
-      console.log(`⚠️ Admin with email ${email} already exists`);
+      console.log(`⚠️ User with email ${email} already exists`);
       return;
     }
 
@@ -26,23 +26,36 @@ async function createAdmin({ name, email, password }) {
       name,
       email,
       password,
-      role: "admin",
+
+      // Updated role
+      role: "super_admin",
+
+      // Optional new fields
+      phoneNumber: phoneNumber || null,
+      country: country || null,
+
+      // User status field
+      userStatus: "active",
+
+      // Verification
       isVerified: true,
       otpVerified: true,
     });
 
     await admin.save();
-    console.log(`✅ Admin created successfully: ${email}`);
+    console.log(`✅ Super Admin created successfully: ${email}`);
   } catch (err) {
-    console.error("❌ Error creating admin:", err);
+    console.error("❌ Error creating super admin:", err);
   } finally {
     mongoose.disconnect();
   }
 }
 
-// CHANGE THESE VALUES BEFORE RUNNING
-createAdmin({
+// CHANGE VALUES BEFORE RUNNING
+createSuperAdmin({
   name: "Super Admin",
   email: "admin@madco.in",
   password: "SecurePassword123!",
+  phoneNumber: "+919876543210",
+  country: "India",
 });

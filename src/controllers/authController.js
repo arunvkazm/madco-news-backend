@@ -244,6 +244,24 @@ if (!allowedRoles.includes(user.role)) {
     user.refreshTokens.push({ token: refreshToken });
     await user.save();
 
+    // Set tokens in HTTP-only cookies
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000, // 15 minutes for access token
+    };
+
+    const refreshCookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days for refresh token
+    };
+
+    res.cookie('access_token', accessToken, cookieOptions);
+    res.cookie('refresh_token', refreshToken, refreshCookieOptions);
+
     return res.json({
       message: "Admin login successful",
       user: {
@@ -252,8 +270,6 @@ if (!allowedRoles.includes(user.role)) {
         name: user.name,
         role: user.role,
       },
-      accessToken,
-      refreshToken,
       expiresIn: ACCESS_TOKEN_EXPIRES_IN,
     });
   } catch (err) {
@@ -378,10 +394,26 @@ export async function refreshToken(req, res, next) {
     user.refreshTokens.push({ token: newRefreshToken });
     await user.save();
 
+    // Set new tokens in cookies
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000, // 15 minutes for access token
+    };
+
+    const refreshCookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days for refresh token
+    };
+
+    res.cookie('access_token', newAccessToken, cookieOptions);
+    res.cookie('refresh_token', newRefreshToken, refreshCookieOptions);
+
     return res.json({
       message: "Token refreshed successfully",
-      accessToken: newAccessToken,
-      refreshToken: newRefreshToken,
       expiresIn: ACCESS_TOKEN_EXPIRES_IN,
     });
   } catch (err) {
@@ -409,17 +441,69 @@ export async function logout(req, res, next) {
         { $pull: { refreshTokens: { token: refreshToken } } }
       );
       return res.status(200).json({ message: "Logged out successfully" });
+    // Get refresh token from cookies or body
+    const refreshToken = req.cookies?.refresh_token || req.body?.refreshToken;
+    
+    if (refreshToken) {
+      let payload = null;
+      try {
+        payload = verifyRefreshToken(refreshToken);
+      } catch {}
+
+      if (payload) {
+        const user = await User.findById(payload.sub);
+        if (user) {
+          user.refreshTokens = user.refreshTokens.filter(
+            (rt) => rt.token !== refreshToken
+          );
+          await user.save();
+        }
+      } else {
+        await User.updateMany(
+          {},
+          { $pull: { refreshTokens: { token: refreshToken } } }
+        );
+      }
     }
 
-    const user = await User.findById(payload.sub);
-    if (user) {
-      user.refreshTokens = user.refreshTokens.filter(
-        (rt) => rt.token !== refreshToken
-      );
-      await user.save();
-    }
+    // Clear cookies
+    res.clearCookie('access_token');
+    res.clearCookie('refresh_token');
 
     return res.status(200).json({ message: "Logged out successfully" });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * VERIFY AUTHENTICATION (Check if user is authenticated)
+ */
+export async function verifyAuth(req, res, next) {
+  try {
+    // This middleware should be called after auth middleware
+    // So req.user should already be set
+    const userId = req.user?.id || req.currentUser?._id;
+    
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    
+    const user = await User.findById(userId).select('-password -refreshTokens');
+    
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
+
+    return res.json({
+      message: 'Authenticated',
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+    });
   } catch (err) {
     next(err);
   }

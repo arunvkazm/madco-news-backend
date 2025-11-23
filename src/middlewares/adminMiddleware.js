@@ -10,6 +10,19 @@ export const adminMiddleware = async (req, res, next) => {
       return res.status(401).json({ message: "Authorization token missing" });
 
     const token = header.split(" ")[1];
+    // Check cookies first, then Authorization header
+    let token = req.cookies?.access_token;
+    
+    if (!token) {
+      const header = req.headers.authorization;
+      if (header?.startsWith('Bearer ')) {
+        token = header.split(' ')[1];
+      }
+    }
+
+    if (!token)
+      return res.status(401).json({ message: 'Authorization token missing' });
+
     const payload = jwt.verify(token, ACCESS_SECRET);
 
     const user = await User.findById(payload.sub);

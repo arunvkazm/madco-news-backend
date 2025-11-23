@@ -45,6 +45,12 @@ app.use(
 
 app.options("/", cors());
 // app.options("/api/*", cors());
+app.use(cors({
+  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174', 'https://madco-news-panel.onrender.com'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }

@@ -68,8 +68,10 @@ const ai = new GoogleGenAI({
 // let summarizer = null;
 // async function loadSummarizer() {
 //   if (!summarizer) {
-//     summarizer = await pipeline("summarization", "Xenova/bart-large-cnn");
-//     console.log("🟢 Summarizer loaded");
+//     // Use facebook/bart-large-cnn model
+    // @xenova/transformers will automatically use the Xenova port
+    summarizer = await pipeline("summarization", "facebook/bart-large-cnn");
+//     console.log("🟢 Summarizer loaded (facebook/bart-large-cnn)");
 //   }
 //   return summarizer;
 // }
@@ -78,46 +80,41 @@ const ai = new GoogleGenAI({
 //   try {
 //     const model = await loadSummarizer();
 
-//     // 1️⃣ Raw summary
-//     const raw = await model(content, {
-//       max_length: 140,
-//       min_length: 60,
-//       do_sample: false,
-//     });
+    // 1️⃣ Raw summary
+    const raw = await model(content, {
+      max_length: 140,
+      min_length: 60,
+      do_sample: false,
+    });
 
 //     let summary = raw[0].summary_text.trim();
 
-//     // 2️⃣ Split into sentences
-//     let sentences = summary.split(/(?<=[.!?])\s+/).filter(Boolean);
+    // 2️⃣ Split into sentences
+    let sentences = summary.split(/(?<=[.!?])\s+/).filter(Boolean);
 
-//     // 3️⃣ Make 3–5 sentences, approx 60 words
-//     let final = [];
-//     let count = 0;
+    // 3️⃣ Make 3–5 sentences, approx 60 words
+    let final = [];
+    let count = 0;
 
-//     for (const s of sentences) {
-//       const w = s.split(" ").length;
-//       if (count + w > 65) break;
-//       final.push(s);
-//       count += w;
+    for (const s of sentences) {
+      const w = s.split(" ").length;
+      if (count + w > 65) break;
+      final.push(s);
+      count += w;
 
-//       if (final.length === 5) break;
-//     }
+      if (final.length === 5) break;
+    }
 
-//     // Ensure minimum 3 sentences
-//     while (final.length < 3 && sentences.length > final.length) {
-//       final.push(sentences[final.length]);
-//     }
+    // Ensure minimum 3 sentences
+    while (final.length < 3 && sentences.length > final.length) {
+      final.push(sentences[final.length]);
+    }
 
-//     return final.join(" ");
+    return final.join(" ");
 
 //   } catch (err) {
 //     console.error("Summary error:", err.message);
 
-//     // fallback
-//     return content.split(/\s+/).slice(0, 60).join(" ") + "...";
-//   }
-// }
-
-
-
-
+    // fallback
+    return content.split(/\s+/).slice(0, 60).join(" ") + "...";
+  

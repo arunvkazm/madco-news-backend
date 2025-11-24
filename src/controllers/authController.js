@@ -270,6 +270,8 @@ if (!allowedRoles.includes(user.role)) {
         name: user.name,
         role: user.role,
       },
+      accessToken, // Return token in response body for Authorization header
+      refreshToken, // Return refresh token for localStorage
       expiresIn: ACCESS_TOKEN_EXPIRES_IN,
     });
   } catch (err) {

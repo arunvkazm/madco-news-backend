@@ -5,12 +5,28 @@ import { v2 as cloudinary } from 'cloudinary';
 import dotenv from "dotenv";
 dotenv.config();
 
+// Initialize Cloudinary configuration
+function configureCloudinary() {
+  const cloud_name = process.env.CLOUDINARY_CLOUD_NAME;
+  const api_key = process.env.CLOUDINARY_API_KEY;
+  const api_secret = process.env.CLOUDINARY_API_SECRET;
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+  if (!cloud_name || !api_key || !api_secret) {
+    console.error('⚠️ Cloudinary configuration missing in uploadToCloudinary');
+    return false;
+  }
+
+  cloudinary.config({
+    cloud_name,
+    api_key,
+    api_secret,
+  });
+
+  return true;
+}
+
+// Configure on module load
+configureCloudinary();
 
 export async function uploadToCloudinary(imagePath, options = {}) {
   // add a tag to make deletion easier later

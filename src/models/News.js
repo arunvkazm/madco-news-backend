@@ -10,9 +10,7 @@ const NewsSchema = new mongoose.Schema(
     },
     summary: {
       type: String,
-      required: true,
-      minlength: 30,
-      maxlength: 1000,
+      required: true
     },
     imageUrl: {
       type: String,

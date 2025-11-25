@@ -270,6 +270,8 @@ if (!allowedRoles.includes(user.role)) {
         name: user.name,
         role: user.role,
       },
+      accessToken, // Return token in response body for Authorization header
+      refreshToken, // Return refresh token for localStorage
       expiresIn: ACCESS_TOKEN_EXPIRES_IN,
     });
   } catch (err) {
@@ -471,10 +473,13 @@ export async function logout(req, res, next) {
     res.clearCookie('refresh_token');
 
     return res.status(200).json({ message: "Logged out successfully" });
-  } catch (err) {
+  }
+ }
+  catch (err) {
     next(err);
   }
 }
+
 
 /**
  * VERIFY AUTHENTICATION (Check if user is authenticated)

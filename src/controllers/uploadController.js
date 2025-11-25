@@ -18,9 +18,22 @@ export async function uploadImage(req, res, next) {
       return res.status(400).json({ message: 'No image file provided' });
     }
 
+    // Validate Cloudinary configuration
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      console.error('Cloudinary configuration missing:', {
+        cloud_name: !!process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: !!process.env.CLOUDINARY_API_KEY,
+        api_secret: !!process.env.CLOUDINARY_API_SECRET,
+      });
+      return res.status(500).json({ 
+        message: 'Failed to upload image', 
+        error: 'Cloudinary configuration is missing. Please check environment variables.' 
+      });
+    }
+
     // Upload to Cloudinary using buffer
     const uploadOptions = {
-      folder: 'yourdoc/news',
+      folder: 'madco/news',
       tags: ['autodelete_6m'],
       use_filename: true,
       unique_filename: true,
@@ -32,8 +45,12 @@ export async function uploadImage(req, res, next) {
       const uploadStream = cloudinary.uploader.upload_stream(
         uploadOptions,
         (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
+          if (error) {
+            console.error('Cloudinary upload error:', error);
+            reject(error);
+          } else {
+            resolve(result);
+          }
         }
       );
 
@@ -49,7 +66,20 @@ export async function uploadImage(req, res, next) {
     });
   } catch (err) {
     console.error('Upload error:', err);
-    res.status(500).json({ message: 'Failed to upload image', error: err.message });
+    
+    // Provide more specific error messages
+    let errorMessage = err.message || 'Failed to upload image';
+    if (err.message && err.message.includes('Invalid Signature')) {
+      errorMessage = 'Cloudinary authentication failed. Please check API credentials.';
+    } else if (err.message && err.message.includes('Invalid api_key')) {
+      errorMessage = 'Invalid Cloudinary API key. Please check your configuration.';
+    }
+    
+    res.status(500).json({ 
+      message: 'Failed to upload image', 
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 }
 

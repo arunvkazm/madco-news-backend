@@ -24,7 +24,7 @@ export async function addNews(req, res, next) {
     // If file is uploaded, use it; otherwise use imageUrl from body
     if (req.file) {
       // Upload to Cloudinary
-      const uploadResult = await uploadToCloudinary(req.file.path, { folder: 'yourdoc/news' });
+      const uploadResult = await uploadToCloudinary(req.file.path, { folder: 'madco/news' });
       finalImageUrl = uploadResult.url;
     } else if (!imageUrl) {
       return res.status(400).json({ message: 'Either image file or imageUrl is required.' });

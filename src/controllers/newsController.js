@@ -7,23 +7,32 @@ import { uploadToCloudinary } from '../utils/uploadToCloudinary.js';
 
 /**
  * ➕ ADD SHORT NEWS
+ * Accepts either:
+ * - File upload via multer (req.file) - will upload to Cloudinary
+ * - imageUrl in request body - already uploaded to Cloudinary
  */
 export async function addNews(req, res, next) {
   try {
-    const { title, summary, category, sourceName, sourceUrl, isTrending, status } =
+    const { title, summary, category, sourceName, sourceUrl, isTrending, status, imageUrl } =
       req.body;
 
-    if (!title || !summary  || !category)
-      return res.status(400).json({ message: 'Title, summary, imageUrl, and category required.' });
+    if (!title || !summary || !category)
+      return res.status(400).json({ message: 'Title, summary, and category are required.' });
 
-    if (!req.file)
-      return res.status(400).json({ message: 'Image file is required.' });
+    let finalImageUrl = imageUrl;
 
-    // Upload to Cloudinary
-    const uploadResult = await uploadToCloudinary(req.file.path, { folder: 'yourdoc/news' });
-    const imageUrl = uploadResult.url;
-    const publicId = uploadResult.public_id;
+    // If file is uploaded, use it; otherwise use imageUrl from body
+    if (req.file) {
+      // Upload to Cloudinary
+      const uploadResult = await uploadToCloudinary(req.file.path, { folder: 'yourdoc/news' });
+      finalImageUrl = uploadResult.url;
+    } else if (!imageUrl) {
+      return res.status(400).json({ message: 'Either image file or imageUrl is required.' });
+    }
 
+    if (!finalImageUrl) {
+      return res.status(400).json({ message: 'Image URL is required.' });
+    }
 
     const categoryExists = await Category.findById(category);
     if (!categoryExists) return res.status(404).json({ message: 'Category not found.' });
@@ -31,12 +40,12 @@ export async function addNews(req, res, next) {
     const news = new News({
       title,
       summary,
-      imageUrl,
+      imageUrl: finalImageUrl,
       category,
-      sourceName,
+      sourceName: sourceName || 'Admin',
       sourceUrl,
-      isTrending,
-      status,
+      isTrending: isTrending === true || isTrending === 'true',
+      status: status || 'draft',
       publishedAt: status === 'published' ? new Date() : null,
     });
 

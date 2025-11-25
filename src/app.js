@@ -15,6 +15,7 @@ import newsRoutes from './routes/newsRoutes.js';
 import adminMilestoneRoutes from "./routes/adminMilestoneRoutes.js";
 import userStatsRoutes from "./routes/userStatsRoutes.js";
 import summaryRoutes from "./routes/summaryRoutes.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
 
 const app = express();
 connectDB();
@@ -69,6 +70,7 @@ app.use("/api/v1/admin/milestones", adminMilestoneRoutes);
 app.use("/api/v1/user/stats", userStatsRoutes);
 app.use("/api/v1/admin", adminUserRoutes);
 app.use("/api/v1/summary", summaryRoutes);
+app.use("/api/v1/upload", uploadRoutes);
 
 
 

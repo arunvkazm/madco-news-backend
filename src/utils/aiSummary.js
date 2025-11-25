@@ -20,7 +20,7 @@ export async function generateSummary(content) {
     const prompt = `
 You are a professional news editor.
 
-Summarize the following article in **around 60 words**, using **3–5 complete sentences**.
+Summarize the following article in **Min and Max 60 words**, using **3–5 complete sentences**.
 - Do NOT end a sentence midway.
 - Keep it factual, neutral, concise, and clear.
 - No repetition or opinions.

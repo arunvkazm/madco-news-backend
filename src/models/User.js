@@ -48,8 +48,10 @@ const UserSchema = new Schema(
     },
     password: { type: String, required: true },
 
-    // NEW FIELDS
-    phoneNumber: { type: String, trim: true, default: null },
+    phone: {
+      countryCode: { type: String, trim: true, default: null },
+      number: { type: String, trim: true, default: null },
+    },
     country: { type: String, trim: true, default: null },
 
     userStatus: {
@@ -105,7 +107,6 @@ const UserSchema = new Schema(
   },
   { timestamps: true }
 );
-
 
 /* ---------------------- Password Hashing ---------------------- */
 UserSchema.pre("save", async function (next) {

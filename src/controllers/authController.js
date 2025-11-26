@@ -15,7 +15,7 @@ const ACCESS_TOKEN_EXPIRES_IN = process.env.ACCESS_TOKEN_EXPIRES_IN || "15m";
  */
 export async function register(req, res, next) {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password,phone,country } = req.body;
 
     if (!email || !password)
       return res.status(400).json({
@@ -36,6 +36,8 @@ export async function register(req, res, next) {
       name,
       email,
       password,
+      phone,
+      country,
       otp: {
         code: '123456',
         expiresAt: new Date(Date.now() + 10 * 60 * 1000),

@@ -4,10 +4,35 @@ import Bookmark from "../models/Bookmark.js";
 
 
 export async function addBookmark(req, res) {
-  const { newsId, externalId, title, summary, imageUrl, sourceUrl, sourceName, publishedAt } = req.body;
+  const { newsId} = req.body;
   const userId = req.user.id;
 
-  // Check if already bookmarked
+  // --- CASE 1: Bookmark by newsId only ---
+  if (newsId && !externalId) {
+    const exists = await Bookmark.findOne({ user: userId, newsRef: newsId });
+    if (exists) return res.status(200).json({ message: "Already bookmarked" });
+
+    const news = await News.findById(newsId);
+    if (!news) return res.status(404).json({ message: "News not found" });
+
+    const bookmark = await Bookmark.create({
+      user: userId,
+      newsRef: newsId,
+      title: news.title,
+      summary: news.summary,
+      imageUrl: news.imageUrl,
+      sourceUrl: news.sourceUrl,
+      sourceName: news.sourceName,
+      publishedAt: news.publishedAt,
+      externalId: null
+    });
+
+    await User.findByIdAndUpdate(userId, { $inc: { "stats.bookmarksCount": 1 } });
+
+    return res.json({ message: "Bookmarked successfully", bookmark });
+  }
+
+  // --- CASE 2: Bookmark external news (existing logic) ---
   const exists = await Bookmark.findOne({
     user: userId,
     $or: [{ newsRef: newsId }, { externalId }]
@@ -23,11 +48,11 @@ export async function addBookmark(req, res) {
     title, summary, imageUrl, sourceUrl, sourceName, publishedAt
   });
 
-  // update stats counter
   await User.findByIdAndUpdate(userId, { $inc: { "stats.bookmarksCount": 1 } });
 
   res.json({ message: "Bookmarked successfully", bookmark });
 }
+
 
 export async function removeBookmark(req, res) {
   const { newsId, externalId } = req.body;

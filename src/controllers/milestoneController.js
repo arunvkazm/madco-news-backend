@@ -1,14 +1,16 @@
 import Milestone from "../models/Milestone.js";
 
 /**
- * ➕ Add Milestone
+ * ➕ Add Milestone with Reward
  */
 export async function addMilestone(req, res) {
   try {
-    const { name, description, targetReads, rewardText, order } = req.body;
+    const { name, description, targetSeconds, order, reward } = req.body;
 
-    if (!name || !targetReads || !order) {
-      return res.status(400).json({ message: "name, targetReads & order are required" });
+    if (!name || !targetSeconds || !order || !reward || !reward.type || !reward.title) {
+      return res.status(400).json({
+        message: "name, targetSeconds, order & reward (type, title) are required",
+      });
     }
 
     const exists = await Milestone.findOne({ order });
@@ -19,20 +21,21 @@ export async function addMilestone(req, res) {
     const milestone = await Milestone.create({
       name,
       description,
-      targetReads,
-      rewardText,
-      order
+      targetSeconds,
+      order,
+      reward,
     });
 
     return res.status(201).json({
       message: "Milestone created successfully",
-      milestone
+      milestone,
     });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 }
+
 
 /**
  * 📜 Get All Milestones
@@ -46,6 +49,7 @@ export async function getMilestones(req, res) {
   }
 }
 
+
 /**
  * ✏️ Update Milestone
  */
@@ -53,18 +57,21 @@ export async function updateMilestone(req, res) {
   try {
     const { id } = req.params;
 
-    const milestone = await Milestone.findByIdAndUpdate(id, req.body, { new: true });
+    const milestone = await Milestone.findByIdAndUpdate(id, req.body, {
+      new: true,
+    });
     if (!milestone)
       return res.status(404).json({ message: "Milestone not found" });
 
     res.json({
       message: "Milestone updated successfully",
-      milestone
+      milestone,
     });
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
 }
+
 
 /**
  * ❌ Delete Milestone

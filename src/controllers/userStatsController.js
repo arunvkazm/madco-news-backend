@@ -96,3 +96,60 @@ export async function getUserStats(req, res) {
   }
 }
 
+export async function addReadingTime(req, res) {
+  try {
+    const userId = req.user._id;
+    const { seconds } = req.body;
+
+    if (!seconds || seconds <= 0) {
+      return res.status(400).json({ message: "Invalid seconds" });
+    }
+
+    let progress = await UserRewardProgress.findOne({ userId });
+
+    if (!progress) {
+      progress = await UserRewardProgress.create({
+        userId,
+        totalReadSeconds: seconds,
+      });
+    } else {
+      progress.totalReadSeconds += seconds;
+      await progress.save();
+    }
+
+    const milestones = await Milestone.find().sort({ order: 1 });
+
+    const newlyUnlocked = [];
+
+    for (const m of milestones) {
+      const alreadyDone = progress.completedMilestones.find(
+        (x) => String(x.milestoneId) === String(m._id)
+      );
+
+      if (!alreadyDone && progress.totalReadSeconds >= m.targetSeconds) {
+        progress.completedMilestones.push({
+          milestoneId: m._id,
+          completedAt: new Date(),
+        });
+
+        newlyUnlocked.push({
+          milestoneId: m._id,
+          name: m.name,
+          reward: m.reward, 
+        });
+      }
+    }
+
+    await progress.save();
+
+    return res.json({
+      message: "Time added successfully",
+      totalReadSeconds: progress.totalReadSeconds,
+      unlockedRewards: newlyUnlocked,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+}
+

@@ -42,20 +42,23 @@ export async function getRewardedUsers(req, res) {
   try {
     const { milestoneId, page = 1, limit = 20 } = req.query;
 
+    // Build filter for UserRewardProgress documents
     const filter = {};
     if (milestoneId) {
       filter["completedMilestones.milestoneId"] = milestoneId;
     }
 
+    // Get all progress documents that have completed milestones
     const progressDocs = await UserRewardProgress.find(filter)
       .populate("userId", "name email phoneNumber country")
-      .populate("completedMilestones.milestoneId")
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit));
+      .populate("completedMilestones.milestoneId");
 
-    const results = [];
+    // Flatten all completed milestones into a single array
+    const allResults = [];
 
     for (const progress of progressDocs) {
+      if (!progress.userId) continue; // Skip if user is deleted
+
       for (const entry of progress.completedMilestones) {
         const milestone = entry.milestoneId;
         if (!milestone) continue;
@@ -65,7 +68,7 @@ export async function getRewardedUsers(req, res) {
           continue;
         }
 
-        results.push({
+        allResults.push({
           user: {
             id: progress.userId._id,
             name: progress.userId.name,
@@ -86,11 +89,24 @@ export async function getRewardedUsers(req, res) {
       }
     }
 
+    // Sort by completedAt (most recent first)
+    allResults.sort((a, b) => {
+      const dateA = new Date(a.completedAt);
+      const dateB = new Date(b.completedAt);
+      return dateB - dateA; // Descending order
+    });
+
+    // Apply pagination
+    const totalCount = allResults.length;
+    const skip = (Number(page) - 1) * Number(limit);
+    const paginatedResults = allResults.slice(skip, skip + Number(limit));
+
     return res.json({
       page: Number(page),
       limit: Number(limit),
-      count: results.length,
-      data: results,
+      count: paginatedResults.length,
+      total: totalCount,
+      data: paginatedResults,
     });
   } catch (err) {
     console.error("getRewardedUsers error:", err);

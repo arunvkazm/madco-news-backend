@@ -2,6 +2,7 @@ import News from '../models/News.js';
 import Category from '../models/Category.js';
 import axios from 'axios';
 import { uploadToCloudinary } from '../utils/uploadToCloudinary.js';
+import Bookmark from '../models/Bookmark.js';
 
 
 
@@ -274,21 +275,73 @@ export async function getNewsById(req, res, next) {
 
 export async function getNewsByCategory(req, res) {
   try {
+    const userId = req.user.id;
     const { categoryId } = req.params;
     const { page = 1, limit = 10 } = req.query;
 
-    const skip = (page - 1) * limit;
+    const currentPage = Number(page);
+    const pageSize = Number(limit);
+    const skip = (currentPage - 1) * pageSize;
 
-    const news = await News.find({ category: categoryId, status: "published" })
+    // 1️⃣ Fetch category name (no description)
+    const category = await Category.findById(categoryId, "name");
+    if (!category) {
+      return res.status(404).json({ message: "Category not found" });
+    }
+
+    // 2️⃣ Count for pagination summary
+    const totalItems = await News.countDocuments({
+      category: categoryId,
+      status: "published",
+    });
+
+    const totalPages = Math.ceil(totalItems / pageSize);
+
+    // 3️⃣ Fetch paginated news
+    const news = await News.find({
+      category: categoryId,
+      status: "published",
+    })
       .sort({ publishedAt: -1 })
       .skip(skip)
-      .limit(Number(limit));
+      .limit(pageSize);
 
+    // 4️⃣ Fetch bookmarked news IDs for user (single query)
+    const userBookmarks = await Bookmark.find({ user: userId }, "newsRef externalId");
+    const bookmarkedSet = new Set(
+      userBookmarks.map(b => b.newsRef?.toString() || b.externalId)
+    );
+
+    // 5️⃣ Inject bookmark flag into response
+    const formattedNews = news.map(item => ({
+      id: item._id,
+      title: item.title,
+      summary: item.summary,
+      imageUrl: item.imageUrl,
+      sourceUrl: item.sourceUrl,
+      sourceName: item.sourceName,
+      publishedAt: item.publishedAt,
+      isBookmarked: bookmarkedSet.has(item._id.toString()),
+    }));
+
+    // 6️⃣ Final response format
     res.json({
       message: "News fetched successfully",
-      count: news.length,
-      news,
+      category: {
+        id: category._id,
+        name: category.name,
+      },
+      news: formattedNews,
+      pagination: {
+        totalItems,
+        totalPages,
+        currentPage,
+        limit: pageSize,
+        hasNextPage: currentPage < totalPages,
+        hasPrevPage: currentPage > 1,
+      },
     });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });

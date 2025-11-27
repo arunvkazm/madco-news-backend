@@ -4,7 +4,7 @@ import { addBookmark, removeBookmark, getBookmarks } from "../controllers/bookma
 
 const router = express.Router();
 
-router.post("/", auth, addBookmark);
+router.post("/add", auth, addBookmark);
 router.get("/", auth, getBookmarks);
 router.delete("/", auth, removeBookmark);
 

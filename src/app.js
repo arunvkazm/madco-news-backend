@@ -14,6 +14,7 @@ import userRoutes from './routes/userRoutes.js';
 import newsRoutes from './routes/newsRoutes.js';
 import adminMilestoneRoutes from "./routes/adminMilestoneRoutes.js";
 import userStatsRoutes from "./routes/userStatsRoutes.js";
+import adminAnalyticsRoutes from "./routes/adminAnalyticsRoutes.js";
 import summaryRoutes from "./routes/summaryRoutes.js";
 import bookmarkRoutes from "./routes/bookmarkRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
@@ -64,15 +65,16 @@ app.use(compression());
 app.use(rateLimit({ windowMs: 60 * 1000, max: 100 }));
 
 // Routes
+app.use('/api/v1', categoryManagementRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/admin/userManagement', userManagementRoutes);
-app.use('/api/v1', categoryManagementRoutes);
 app.use('/api/v1/user/bookmarks', bookmarkRoutes);
 app.use('/api/v1/news', newsRoutes);
 app.use('/api/v1/user', userRoutes);
 app.use("/api/v1/admin/milestones", adminMilestoneRoutes);
 app.use("/api/v1/user/stats", userStatsRoutes);
 app.use("/api/v1/admin", adminUserRoutes);
+app.use("/api/v1/admin/analytics", adminAnalyticsRoutes);
 app.use("/api/v1/summary", summaryRoutes);
 app.use("/api/v1/upload", uploadRoutes);
 app.use("/api/v1/admin/analytics", adminAnalyticsRoutes);

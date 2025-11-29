@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
+import { RewardSchema } from "./Milestone.js"; 
 
 const { Schema } = mongoose;
 
@@ -22,7 +23,7 @@ const OTPSchema = new Schema({
 const UserStatsSchema = new Schema(
   {
     totalReadNews: { type: Number, default: 0 },
-    totalSpentTime: { type: Number, default: 0 }, // seconds
+    totalSpentTime: { type: Number, default: 0 },
     bookmarksCount: { type: Number, default: 0 },
     sharedCount: { type: Number, default: 0 },
     currentMilestone: {
@@ -31,9 +32,56 @@ const UserStatsSchema = new Schema(
       default: null,
     },
     milestoneProgress: { type: Number, default: 0 },
+milestoneTimeSpent: { type: Number, default: 0 },
+    // reward stats
+    totalRewardsEarned: { type: Number, default: 0 },
+    totalRewardAmount: { type: Number, default: 0 },
+    lastRewardAt: { type: Date, default: null },
   },
   { _id: false }
 );
+
+/* --------------------------------------------------------- */
+/* 🆕 User Reward History Schema — Added Here                 */
+/* --------------------------------------------------------- */
+const UserRewardHistorySchema = new mongoose.Schema(
+  {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    milestone: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Milestone",
+      required: true,
+    },
+
+    // snapshot of reward at unlock
+    reward: {
+      type: Object, // or use RewardSchema
+      required: true,
+    },
+
+    status: {
+      type: String,
+      enum: ["unlocked", "claimed", "expired"],
+      default: "unlocked",
+    },
+
+    unlockedAt: { type: Date, default: Date.now },
+    claimedAt: { type: Date },
+  },
+  { timestamps: true }
+);
+
+// Export separate model
+export const UserRewardHistory = mongoose.model(
+  "UserRewardHistory",
+  UserRewardHistorySchema
+);
+/* --------------------------------------------------------- */
+
 
 /* ---------------------- Main User Schema ---------------------- */
 const UserSchema = new Schema(
@@ -52,6 +100,7 @@ const UserSchema = new Schema(
       countryCode: { type: String, trim: true, default: null },
       number: { type: String, trim: true, default: null },
     },
+
     country: { type: String, trim: true, default: null },
 
     userStatus: {
@@ -66,15 +115,14 @@ const UserSchema = new Schema(
       default: "user",
     },
 
-    // Verification
     isVerified: { type: Boolean, default: false },
     otp: OTPSchema,
     otpVerified: { type: Boolean, default: false },
 
-    // Category Selection
     preferredCategories: [
       { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
     ],
+
     isCategoriesSelected: { type: Boolean, default: false },
 
     stats: {
@@ -86,6 +134,9 @@ const UserSchema = new Schema(
         sharedCount: 0,
         currentMilestone: null,
         milestoneProgress: 0,
+        totalRewardsEarned: 0,
+        totalRewardAmount: 0,
+        lastRewardAt: null,
       }),
     },
 
@@ -93,17 +144,18 @@ const UserSchema = new Schema(
     passwordChangedAt: Date,
     refreshTokens: [RefreshTokenSchema],
 
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      default: null,
-    },
-
+  
     allowedCategories: [
       { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
     ],
 
     isActive: { type: Boolean, default: true },
+
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
   },
   { timestamps: true }
 );
@@ -121,7 +173,7 @@ UserSchema.pre("save", async function (next) {
   next();
 });
 
-/* ---------------------- Compare Password Method ---------------------- */
+/* ---------------------- Compare Password ---------------------- */
 UserSchema.methods.comparePassword = async function (candidate) {
   return bcrypt.compare(candidate, this.password);
 };

@@ -14,22 +14,22 @@ export async function getMyRewards(req, res) {
       return res.json({ rewards: [] });
     }
 
-    const rewards = progress.completedMilestones.map((entry) => {
-      const milestone = entry.milestoneId;
-      if (!milestone) return null;
+    const rewards = progress.completedMilestones
+      .map((entry) => {
+        const milestone = entry.milestoneId;
+        if (!milestone) return null;
 
-      return {
-        milestoneId: milestone._id,
-        milestoneName: milestone.name,
-        milestoneDescription: milestone.description,
-        targetSeconds: milestone.targetSeconds,
-        order: milestone.order,
-
-        reward: milestone.reward, // full reward object
-
-        completedAt: entry.completedAt,
-      };
-    }).filter(Boolean);
+        return {
+          milestoneId: milestone._id,
+          milestoneName: milestone.name,
+          milestoneDescription: milestone.description,
+          targetSeconds: milestone.targetSeconds,
+          order: milestone.order,
+          reward: milestone.reward,      // full reward object
+          completedAt: entry.completedAt,
+        };
+      })
+      .filter(Boolean);
 
     return res.json({ rewards });
   } catch (err) {
@@ -38,32 +38,31 @@ export async function getMyRewards(req, res) {
   }
 }
 
+
 export async function getRewardedUsers(req, res) {
   try {
     const { milestoneId, page = 1, limit = 20 } = req.query;
 
-    // Build filter for UserRewardProgress documents
     const filter = {};
     if (milestoneId) {
       filter["completedMilestones.milestoneId"] = milestoneId;
     }
 
-    // Get all progress documents that have completed milestones
+    // Get progress docs with user + milestone populated
     const progressDocs = await UserRewardProgress.find(filter)
-      .populate("userId", "name email phoneNumber country")
+      .populate("userId", "name email phone country")
       .populate("completedMilestones.milestoneId");
 
-    // Flatten all completed milestones into a single array
     const allResults = [];
 
     for (const progress of progressDocs) {
-      if (!progress.userId) continue; // Skip if user is deleted
+      if (!progress.userId) continue; // user deleted / not found
 
       for (const entry of progress.completedMilestones) {
         const milestone = entry.milestoneId;
         if (!milestone) continue;
 
-        // If filtered by milestoneId, skip others
+        // If milestone filter provided, skip others
         if (milestoneId && String(milestone._id) !== String(milestoneId)) {
           continue;
         }
@@ -73,8 +72,8 @@ export async function getRewardedUsers(req, res) {
             id: progress.userId._id,
             name: progress.userId.name,
             email: progress.userId.email,
-            phoneNumber: progress.userId.phoneNumber,
-            country: progress.userId.country,
+            phone: progress.userId.phone || null,   // { countryCode, number }
+            country: progress.userId.country || null,
           },
           milestone: {
             id: milestone._id,
@@ -83,20 +82,20 @@ export async function getRewardedUsers(req, res) {
             order: milestone.order,
             targetSeconds: milestone.targetSeconds,
           },
-          reward: milestone.reward,       // full reward details
+          reward: milestone.reward,       // full reward details (coupon/cash)
           completedAt: entry.completedAt, // when user unlocked it
         });
       }
     }
 
-    // Sort by completedAt (most recent first)
+    // Sort by most recent reward
     allResults.sort((a, b) => {
       const dateA = new Date(a.completedAt);
       const dateB = new Date(b.completedAt);
-      return dateB - dateA; // Descending order
+      return dateB - dateA;
     });
 
-    // Apply pagination
+    // Pagination in memory
     const totalCount = allResults.length;
     const skip = (Number(page) - 1) * Number(limit);
     const paginatedResults = allResults.slice(skip, skip + Number(limit));

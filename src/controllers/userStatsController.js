@@ -1,41 +1,57 @@
 import User from "../models/User.js";
 import Milestone from "../models/Milestone.js";
+import UserRewardProgress from "../models/UserRewardProgress.js"; // ✅ ADD THIS
 
+// 🔹 Record read + update stats + milestone PROGRESS (time based)
 export async function recordNewsRead(req, res) {
   try {
-    const { newsId, timeSpent } = req.body; // timeSpent in seconds
+    const { timeSpent, readCount } = req.body;
 
-    const user = await User.findById(req.user.id).populate(
-      "stats.currentMilestone"
-    );
+    const user = await User.findById(req.user.id).populate("stats.currentMilestone");
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // ✅ Update stats
-    user.stats.totalReadNews += 1;
-    user.stats.totalSpentTime += Number(timeSpent || 0);
+    const safeTime = Number(timeSpent) > 0 ? Number(timeSpent) : 0;
+    const safeCount = Number(readCount) > 0 ? Number(readCount) : 1;
 
-    // ✅ Handle milestones
+    // Update basic stats
+    user.stats.totalReadNews += safeCount;
+    user.stats.totalSpentTime += safeTime;  
+
+    // Increase time only for current milestone
+    user.stats.milestoneTimeSpent += safeTime;
+
+    // Fetch milestones
     const milestones = await Milestone.find().sort({ order: 1 });
 
-    // If no milestone assigned yet, assign first one
-    if (!user.stats.currentMilestone) {
-      user.stats.currentMilestone = milestones[0]?._id;
+    // If first time, assign milestone 1
+    if (!user.stats.currentMilestone && milestones.length > 0) {
+      user.stats.currentMilestone = milestones[0]._id;
+      user.stats.milestoneTimeSpent = 0;
     }
 
     const current = await Milestone.findById(user.stats.currentMilestone);
-    const target = current?.targetReads || 1;
-    const read = user.stats.totalReadNews;
+    if (!current) {
+      await user.save();
+      return res.json({ message: "Recorded (no milestones configured)" });
+    }
 
-    // ✅ Calculate progress %
-    let progress = Math.min((read / target) * 100, 100);
+    // Calculate progress (only using milestoneTimeSpent)
+    const progress = Math.min(
+      (user.stats.milestoneTimeSpent / current.targetSeconds) * 100,
+      100
+    );
+
     user.stats.milestoneProgress = Math.round(progress);
 
-    // ✅ If milestone reached, move to next
+    // Check completion
     if (progress >= 100) {
+      // Move to next milestone
       const next = milestones.find((m) => m.order > current.order);
+
       if (next) {
         user.stats.currentMilestone = next._id;
         user.stats.milestoneProgress = 0;
+        user.stats.milestoneTimeSpent = 0;  // RESET for next milestone
       }
     }
 
@@ -43,21 +59,28 @@ export async function recordNewsRead(req, res) {
 
     return res.json({
       message: "Read event recorded",
-      totalReadNews: user.stats.totalReadNews,
       milestoneProgress: user.stats.milestoneProgress,
+      totalSpentTime: user.stats.totalSpentTime,
+      milestoneTimeSpent: user.stats.milestoneTimeSpent,
+      currentMilestone: user.stats.currentMilestone,
     });
+
   } catch (err) {
-    console.error(err);
+    console.error("recordNewsRead error:", err);
     res.status(500).json({ message: "Server error" });
   }
 }
 
 
+// 🔹 Stats + current & next milestone (time-based + reward)
 export async function getUserStats(req, res) {
   try {
     const user = await User.findById(req.user.id)
       .select("-password -refreshTokens")
-      .populate("stats.currentMilestone", "name targetReads rewardText order");
+      .populate(
+        "stats.currentMilestone",
+        "name description targetSeconds order reward"
+      );
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -65,16 +88,14 @@ export async function getUserStats(req, res) {
 
     const currentMilestone = user.stats.currentMilestone;
 
-    // ✅ find next milestone only if current milestone exists
     let nextMilestone = null;
     if (currentMilestone) {
       nextMilestone = await Milestone.findOne({
-        order: currentMilestone.order + 1
-      }).select("name targetReads rewardText order");
+        order: currentMilestone.order + 1,
+      }).select("name description targetSeconds order reward");
     } else {
-      // If user has no milestone assigned yet
       nextMilestone = await Milestone.findOne({ order: 1 }).select(
-        "name targetReads rewardText order"
+        "name description targetSeconds order reward"
       );
     }
 
@@ -86,19 +107,21 @@ export async function getUserStats(req, res) {
       },
       stats: {
         ...user.stats.toObject(),
+        currentMilestone,
         nextMilestone,
-      }
+      },
     });
-
   } catch (err) {
     console.error("Stats error =>", err);
     res.status(500).json({ message: "Server error" });
   }
 }
 
+
+// 🔹 Time-based reward unlocking (UserRewardProgress)
 export async function addReadingTime(req, res) {
   try {
-    const userId = req.user._id;
+    const userId = req.user.id;
     const { seconds } = req.body;
 
     if (!seconds || seconds <= 0) {
@@ -135,21 +158,112 @@ export async function addReadingTime(req, res) {
         newlyUnlocked.push({
           milestoneId: m._id,
           name: m.name,
-          reward: m.reward, 
+          reward: m.reward,
         });
       }
     }
 
     await progress.save();
 
+    // ---------- NEXT MILESTONE CALC ----------
+    const completedIds = new Set(
+      progress.completedMilestones.map((m) => String(m.milestoneId))
+    );
+
+    const nextMilestone = milestones.find(
+      (m) => !completedIds.has(String(m._id))
+    );
+
+    let nextInfo = null;
+    if (nextMilestone) {
+      nextInfo = {
+        id: nextMilestone._id,
+        name: nextMilestone.name,
+        description: nextMilestone.description,
+        order: nextMilestone.order,
+        targetSeconds: nextMilestone.targetSeconds,
+        remainingSeconds: Math.max(
+          nextMilestone.targetSeconds - progress.totalReadSeconds,
+          0
+        ),
+        reward: nextMilestone.reward,
+      };
+    }
+
     return res.json({
       message: "Time added successfully",
       totalReadSeconds: progress.totalReadSeconds,
-      unlockedRewards: newlyUnlocked,
+      unlockedRewards: newlyUnlocked, // array (may be empty)
+      nextMilestone: nextInfo,         // null if all completed
     });
   } catch (err) {
-    console.error(err);
+    console.error("addReadingTime error:", err);
     res.status(500).json({ message: "Server error" });
   }
 }
 
+export async function getNextMilestoneTarget(req, res) {
+  try {
+    const userId = req.user.id;
+
+    // Get or initialize progress
+    let progress = await UserRewardProgress.findOne({ userId });
+    if (!progress) {
+      progress = await UserRewardProgress.create({
+        userId,
+        totalReadSeconds: 0,
+        completedMilestones: [],
+      });
+    }
+
+    const milestones = await Milestone.find().sort({ order: 1 });
+
+    if (!milestones.length) {
+      return res.json({
+        hasMore: false,
+        nextMilestone: null,
+        message: "No milestones configured",
+      });
+    }
+
+    // Get IDs of milestones already completed
+    const completedIds = new Set(
+      progress.completedMilestones.map((m) => String(m.milestoneId))
+    );
+
+    // First milestone that is not completed
+    const nextMilestone = milestones.find(
+      (m) => !completedIds.has(String(m._id))
+    );
+
+    if (!nextMilestone) {
+      return res.json({
+        hasMore: false,
+        nextMilestone: null,
+        message: "All milestones completed",
+      });
+    }
+
+    const remainingSeconds = Math.max(
+      nextMilestone.targetSeconds - progress.totalReadSeconds,
+      0
+    );
+
+    return res.json({
+      hasMore: true,
+      totalReadSeconds: progress.totalReadSeconds,
+      nextMilestone: {
+        id: nextMilestone._id,
+        name: nextMilestone.name,
+        description: nextMilestone.description,
+        order: nextMilestone.order,
+        targetSeconds: nextMilestone.targetSeconds,
+        remainingSeconds,
+        reward: nextMilestone.reward, // full reward object
+      },
+    });
+  } catch (err) {
+    console.error("getNextMilestoneTarget error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+}

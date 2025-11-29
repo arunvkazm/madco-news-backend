@@ -1,5 +1,6 @@
 import User from "../models/User.js";
 import Category from "../models/Category.js";
+import Milestone from  "../models/Milestone.js";
 
 export async function selectCategories(req, res, next) {
   try {
@@ -54,18 +55,84 @@ export async function selectCategories(req, res, next) {
 
 export async function getMyProfile(req, res) {
   try {
+    console.log("📌 [getMyProfile] Request by User:", req.user?.id);
+
     const user = await User.findById(req.user.id)
       .select("-password -refreshTokens")
-      .populate("preferredCategories", "name");
+      .populate("preferredCategories", "name")
+      .populate(
+        "stats.currentMilestone",
+        "name description targetSeconds order reward"
+      );
 
-    return res.json({
+    console.log("🔍 [getMyProfile] User found:", user ? "YES" : "NO");
+
+    if (!user) {
+      console.log("❌ [getMyProfile] User not found in DB");
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    console.log(
+      "🧭 [getMyProfile] Current milestone:",
+      user.stats.currentMilestone
+        ? `Order ${user.stats.currentMilestone.order}`
+        : "None"
+    );
+
+    const currentMilestone = user.stats.currentMilestone;
+
+    let nextMilestone = null;
+
+    if (currentMilestone) {
+      console.log(
+        `➡️  [getMyProfile] Fetching next milestone: order ${
+          currentMilestone.order + 1
+        }`
+      );
+
+      nextMilestone = await Milestone.findOne({
+        order: currentMilestone.order + 1,
+      }).select("name description targetSeconds order reward");
+
+      console.log(
+        "📦 [getMyProfile] Next milestone found:",
+        nextMilestone ? "YES" : "NO"
+      );
+    } else {
+      console.log("🆕 [getMyProfile] No milestone assigned → fetching first one");
+
+      nextMilestone = await Milestone.findOne({ order: 1 }).select(
+        "name description targetSeconds order reward"
+      );
+
+      console.log(
+        "📦 [getMyProfile] First milestone found:",
+        nextMilestone ? "YES" : "NO"
+      );
+    }
+
+    const responsePayload = {
       message: "User info fetched successfully",
-      user
-    });
+      user: {
+        ...user.toObject(),
+        stats: {
+          ...user.stats.toObject(),
+          currentMilestone,
+          nextMilestone,
+        },
+      },
+    };
+
+    console.log("✅ [getMyProfile] Sending response");
+    return res.json(responsePayload);
+
   } catch (err) {
+    console.error("🔥 [getMyProfile] Server error:", err);
     return res.status(500).json({ message: "Server error" });
   }
 }
+
+
 
 export async function updateProfile(req, res, next) {
   try {

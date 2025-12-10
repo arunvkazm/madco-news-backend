@@ -134,38 +134,56 @@ export async function addReadingTime(req, res) {
       progress = await UserRewardProgress.create({
         userId,
         totalReadSeconds: seconds,
+        completedMilestones: []
       });
     } else {
       progress.totalReadSeconds += seconds;
       await progress.save();
     }
 
-    const milestones = await Milestone.find().sort({ order: 1 });
+    const milestones = await Milestone.find().sort({ targetSeconds: 1 });
+
 
     const newlyUnlocked = [];
+    const alreadyUnlocked = [];
+
+    const completedMap = new Map();
+    for (const cm of progress.completedMilestones) {
+      completedMap.set(String(cm.milestoneId), cm.completedAt);
+    }
 
     for (const m of milestones) {
-      const alreadyDone = progress.completedMilestones.find(
-        (x) => String(x.milestoneId) === String(m._id)
-      );
+      const idStr = String(m._id);
+      const alreadyDone = completedMap.has(idStr);
 
       if (!alreadyDone && progress.totalReadSeconds >= m.targetSeconds) {
+        const completedAt = new Date();
+
         progress.completedMilestones.push({
           milestoneId: m._id,
-          completedAt: new Date(),
+          completedAt
         });
 
         newlyUnlocked.push({
           milestoneId: m._id,
           name: m.name,
           reward: m.reward,
+          completedAt
+        });
+
+        completedMap.set(idStr, completedAt);
+      } else if (alreadyDone) {
+        alreadyUnlocked.push({
+          milestoneId: m._id,
+          name: m.name,
+          reward: m.reward,
+          completedAt: completedMap.get(idStr)
         });
       }
     }
 
     await progress.save();
 
-    // ---------- NEXT MILESTONE CALC ----------
     const completedIds = new Set(
       progress.completedMilestones.map((m) => String(m.milestoneId))
     );
@@ -186,21 +204,28 @@ export async function addReadingTime(req, res) {
           nextMilestone.targetSeconds - progress.totalReadSeconds,
           0
         ),
-        reward: nextMilestone.reward,
+        reward: nextMilestone.reward
       };
     }
+
+    const hadNewUnlocks = newlyUnlocked.length > 0;
 
     return res.json({
       message: "Time added successfully",
       totalReadSeconds: progress.totalReadSeconds,
-      unlockedRewards: newlyUnlocked, // array (may be empty)
-      nextMilestone: nextInfo,         // null if all completed
+      hadNewUnlocks,
+      unlockCount: newlyUnlocked.length,
+      newlyUnlocked,
+      alreadyUnlocked,
+      nextMilestone: nextInfo
     });
+
   } catch (err) {
     console.error("addReadingTime error:", err);
     res.status(500).json({ message: "Server error" });
   }
 }
+
 
 export async function getNextMilestoneTarget(req, res) {
   try {
@@ -216,7 +241,8 @@ export async function getNextMilestoneTarget(req, res) {
       });
     }
 
-    const milestones = await Milestone.find().sort({ order: 1 });
+   const milestones = await Milestone.find().sort({ targetSeconds: 1 });
+
 
     if (!milestones.length) {
       return res.json({
@@ -231,7 +257,7 @@ export async function getNextMilestoneTarget(req, res) {
       progress.completedMilestones.map((m) => String(m.milestoneId))
     );
 
-    // First milestone that is not completed
+   // first not completed in ascending targetSeconds
     const nextMilestone = milestones.find(
       (m) => !completedIds.has(String(m._id))
     );

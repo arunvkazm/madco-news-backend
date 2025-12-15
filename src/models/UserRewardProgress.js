@@ -1,14 +1,44 @@
 import mongoose from "mongoose";
 
-const UserRewardProgressSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  totalReadSeconds: { type: Number, default: 0 },
-  completedMilestones: [
-    {
-      milestoneId: { type: mongoose.Schema.Types.ObjectId, ref: "Milestone" },
-      completedAt: Date
-    }
-  ]
-}, { timestamps: true });
+const CompletedMilestoneSchema = new mongoose.Schema({
+  milestoneId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Milestone",
+    required: true,
+  },
+  completedAt: {
+    type: Date,
+    required: true,
+  },
 
-export default mongoose.model("UserRewardProgress", UserRewardProgressSchema);
+  // 🔥 NEW FIELDS
+  claimed: {
+    type: Boolean,
+    default: false,
+  },
+  claimedAt: {
+    type: Date,
+  },
+});
+
+const UserRewardProgressSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      unique: true,
+    },
+    totalReadSeconds: {
+      type: Number,
+      default: 0,
+    },
+    completedMilestones: [CompletedMilestoneSchema],
+  },
+  { timestamps: true }
+);
+
+export default mongoose.model(
+  "UserRewardProgress",
+  UserRewardProgressSchema
+);

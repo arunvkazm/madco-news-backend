@@ -293,3 +293,117 @@ export async function getNextMilestoneTarget(req, res) {
     res.status(500).json({ message: "Server error" });
   }
 }
+
+export async function getClaimedRewards(req, res) {
+  try {
+    const userId = req.user.id;
+
+    const progress = await UserRewardProgress.findOne({ userId })
+      .populate("completedMilestones.milestoneId");
+
+    if (!progress) {
+      return res.json({ rewards: [] });
+    }
+
+    const claimedRewards = progress.completedMilestones
+      .filter((m) => m.claimed)
+      .map((m) => ({
+        milestoneId: m.milestoneId._id,
+        name: m.milestoneId.name,
+        reward: m.milestoneId.reward,
+        completedAt: m.completedAt,
+        claimedAt: m.claimedAt,
+      }));
+
+    return res.json({
+      count: claimedRewards.length,
+      rewards: claimedRewards,
+    });
+  } catch (err) {
+    console.error("getClaimedRewards error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+}
+
+// GET /api/rewards/unclaimed
+export async function getUnclaimedRewards(req, res) {
+  try {
+    const userId = req.user.id;
+
+    const progress = await UserRewardProgress.findOne({ userId })
+      .populate("completedMilestones.milestoneId");
+
+    if (!progress) {
+      return res.json({ rewards: [] });
+    }
+
+    const unclaimedRewards = progress.completedMilestones
+      .filter((m) => !m.claimed)
+      .map((m) => ({
+        milestoneId: m.milestoneId._id,
+        name: m.milestoneId.name,
+        reward: m.milestoneId.reward,
+        completedAt: m.completedAt,
+      }));
+
+    return res.json({
+      count: unclaimedRewards.length,
+      rewards: unclaimedRewards,
+    });
+  } catch (err) {
+    console.error("getUnclaimedRewards error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+}
+
+// POST /api/rewards/claim
+// body: { milestoneId }
+export async function claimReward(req, res) {
+  try {
+    const userId = req.user.id;
+    const { milestoneId } = req.body;
+
+    if (!milestoneId) {
+      return res.status(400).json({ message: "Milestone ID required" });
+    }
+
+    const progress = await UserRewardProgress.findOne({ userId });
+
+    if (!progress) {
+      return res.status(404).json({ message: "No reward progress found" });
+    }
+
+    const milestoneProgress = progress.completedMilestones.find(
+      (m) => String(m.milestoneId) === milestoneId
+    );
+
+    if (!milestoneProgress) {
+      return res
+        .status(400)
+        .json({ message: "Milestone not completed yet" });
+    }
+
+    if (milestoneProgress.claimed) {
+      return res
+        .status(400)
+        .json({ message: "Reward already claimed" });
+    }
+
+    milestoneProgress.claimed = true;
+    milestoneProgress.claimedAt = new Date();
+
+    await progress.save();
+
+    const milestone = await Milestone.findById(milestoneId);
+
+    return res.json({
+      message: "Reward claimed successfully",
+      reward: milestone.reward,
+      claimedAt: milestoneProgress.claimedAt,
+    });
+  } catch (err) {
+    console.error("claimReward error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+}
+
